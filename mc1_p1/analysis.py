@@ -69,6 +69,8 @@ def try_code():
 
     start_val = 1000000
 
+    # Test Cases
+
     # Start Date: 2010-01-01
     # End Date: 2010-12-31
     # Symbols: ['GOOG', 'AAPL', 'GLD', 'XOM']
@@ -114,10 +116,10 @@ def try_code():
     # allocs: [0.1, 0.4, 0.5, 0.0]
     # start_val: 1000000
     # sharpe_ratio: 1.10895144722 (expected: -6.87191373641)
-    start_date = dt.datetime(2010,6,1)
-    end_date = dt.datetime(2011,6,1)
-    symbols = ['AAPL', 'GLD', 'GOOG', 'XOM']
-    allocations = [0.1, 0.4, 0.5, 0.0]
+    # start_date = dt.datetime(2010,6,1)
+    # end_date = dt.datetime(2011,6,1)
+    # symbols = ['AAPL', 'GLD', 'GOOG', 'XOM']
+    # allocations = [0.1, 0.4, 0.5, 0.0]
 
     # Assess the portfolio
     cr, adr, sddr, sr, ev = assess_portfolio(sd=start_date, ed=end_date,
