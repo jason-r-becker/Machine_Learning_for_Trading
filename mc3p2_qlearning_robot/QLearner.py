@@ -11,15 +11,14 @@ class QLearner(object):
         return 'Jason R Becker'
 
     def __init__(self, \
-         num_states=100, \
-         num_actions=4, \
-         alpha=0.2, \
-         alphar=0.2, \
-         gamma=0.9, \
-         rar=0.5, \
-         radr=0.99, \
-         dyna=0, \
-         verbose=False):
+                 num_states=100,
+                 num_actions=3,
+                 alpha=0.2,
+                 gamma=0.9,
+                 rar=0.5,
+                 radr=0.99,
+                 dyna=0,
+                 verbose=False):
 
         self.verbose = verbose
         self.num_actions = num_actions
@@ -32,23 +31,17 @@ class QLearner(object):
         self.gamma = gamma
         self.dyna = dyna
         self.num_states = num_states
-        self.itter = 0
-
-        self.q = {}
-        self.R = {}
 
         # Initialize Q table
-        for s, a in np.ndindex((num_states, num_actions)):
-            self.q[(s, a)] = np.random.random_integers(-1, 1)
+        self.q = np.random.uniform(-1, 1, size=(num_states, num_actions))
 
         # Initialize T and R tables for dyna
-        if self.dyna > 0:
-            self.Tc = np.empty(num_states**2 * num_actions).reshape(num_states, num_actions, num_states)
+        if self.dyna != 0:
+            self.Tc = np.ndarray(shape=(num_states, num_actions, num_states))
             self.Tc.fill(0.00001)
             self.T = self.Tc / self.Tc.sum(axis=2, keepdims=True)
-
-            for s, a in np.ndindex((num_states, num_actions)):
-                self.R[(s, a)] = -1
+            self.R = np.ndarray(shape=(num_states, num_actions))
+            self.R.fill(-1.0)
 
     def querysetstate(self, s):
         """
@@ -58,9 +51,9 @@ class QLearner(object):
         """
 
         self.s = s
-        actions = [self.q.get((s, a), 0.0) for a in range(self.num_actions)]
-        action = np.random.choice([i for i, a in enumerate(actions) if a == max(actions)])
-
+        action = rand.randint(0, self.num_actions - 1)
+        if rand.random() > self.rar:
+            action = np.argmax(self.q[s,])
         if self.verbose:
             print "s =", s, "a =", action
 
@@ -75,39 +68,39 @@ class QLearner(object):
         """
 
         # Update Q table
-        Qmax = max([self.q.get((s_prime, a_prime), 0.0) for a_prime in range(self.num_actions)])
-        self.q[(self.s, self.a)] = (1 - self.alpha) * self.q[(self.s, self.a)] + self.alpha * (r + self.gamma * Qmax)
+        self.q[self.s, self.a] = (1 - self.alpha) * self.q[self.s, self.a] + self.alpha * (
+            r + self.gamma * np.max(self.q[s_prime,]))
 
-        if np.random.random() < self.rar:
+        if rand.random() <= self.rar:
             action = rand.randint(0, self.num_actions - 1)
         else:
-            actions = [self.q.get((s_prime, a), 0.0) for a in range(self.num_actions)]
-            action = np.random.choice([i for i, a in enumerate(actions) if a == max(actions)])
+            action = np.argmax(self.q[s_prime,])
 
         # Update random action with decay rate
-        self.rar *= self.radr
-        self.itter += 1
+        self.rar = self.rar * self.radr
 
         # Implement dyna
-        if self.dyna > 0:
-            self.Tc[self.s, self.a, s_prime] += 1
+        if self.dyna != 0:
+            # increment Tc, update T and R
+            self.Tc[self.s, self.a, s_prime] = self.Tc[self.s, self.a, s_prime] + 1
             self.T = self.Tc / self.Tc.sum(axis=2, keepdims=True)
-            self.R[(self.s, self.a)] = (1 - self.alpha) * self.R[(self.s, self.a)] + self.alpha * r
+            self.R[self.s, self.a] = (1 - self.alpha) * self.R[self.s, self.a] + (self.alpha * r)
 
-            dyna_s = np.random.random_integers(0, self.num_states - 1, self.dyna)
-            dyna_a = np.random.random_integers(0, self.num_actions - 1, self.dyna)
+            # iterate through the dyna simulations
+            for i in range(0, self.dyna):
+                # select a random a and s
+                a_dyna = np.random.randint(low=0, high=self.num_actions)
+                s_dyna = np.random.randint(low=0, high=self.num_states)
+                # infer s' from T
+                s_prime_dyna = np.random.multinomial(1, self.T[s_dyna, a_dyna,]).argmax()
+                # compute R from s and a
+                r = self.R[s_dyna, a_dyna]
+                # update Q
+                self.q[s_dyna, a_dyna] = (1 - self.alpha) * self.q[s_dyna, a_dyna] + \
+                                         self.alpha * (r + self.gamma * np.max(self.q[s_prime_dyna,]))
 
-            if self.itter > 10:  # Seeds first 10 iterations before performing dyna
-                for i in range(self.dyna):
-                    dyna_s_prime = np.random.multinomial(1, self.T[dyna_s[i], dyna_a[i], ]).argmax()
-                    dyna_r = self.R.get((dyna_s[i], dyna_a[i]), 0.0)
-                    dyna_Qmax = max([self.q.get((dyna_s_prime, dyna_a_prime), 0.0)
-                                     for dyna_a_prime in range(self.num_actions)])
-                    self.q[(dyna_s[i], dyna_a[i])] = (1 - self.alpha) * self.q[(dyna_s[i], dyna_a[i])] + \
-                                                     self.alpha * (dyna_r + self.gamma * dyna_Qmax)
-
-        self.a = action
         self.s = s_prime
+        self.a = action
 
         if self.verbose:
             print "s =", s_prime, "a =", action, "r =", r

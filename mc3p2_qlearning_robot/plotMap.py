@@ -21,9 +21,9 @@ def printmap(data):
                 print "@",
         print
     print "--------------------"
-
-filename = 'testworlds/world10.csv'
-inf = open(filename)
-data = np.array([map(float,s.strip().split(',')) for s in inf.readlines()])
-
-printmap(data)
+for i in ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10']:
+    filename = 'testworlds/world' + i + '.csv'
+    inf = open(filename)
+    data = np.array([map(float,s.strip().split(',')) for s in inf.readlines()])
+    print('World: ' + i)
+    printmap(data)
